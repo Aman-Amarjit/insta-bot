@@ -40,9 +40,10 @@ class InstagramClient:
                 
                 self.cl.load_settings(self.session_file)
                 
-                # VERIFY: Make a real lightweight API call to test the session ID
-                self.cl.user_info(self.cl.user_id)
-                print("✅ Instagram logged in and session verified from base64 config.")
+                # VERIFY: Resolve user ID and verify session is active
+                user_id = self.cl.user_id_from_username(self.username)
+                self.cl.user_id = user_id
+                print(f"✅ Instagram logged in and session verified from base64 config. User ID: {user_id}")
                 return True
             except Exception as e:
                 print(f"⚠️ Base64 session is invalid or expired: {e}. Trying local file...")
@@ -53,9 +54,10 @@ class InstagramClient:
             try:
                 self.cl.load_settings(self.session_file)
                 
-                # VERIFY: Make a real lightweight API call to test the session ID
-                self.cl.user_info(self.cl.user_id)
-                print("✅ Instagram logged in and session verified from local session.json.")
+                # VERIFY: Resolve user ID and verify session is active
+                user_id = self.cl.user_id_from_username(self.username)
+                self.cl.user_id = user_id
+                print(f"✅ Instagram logged in and session verified from local session.json. User ID: {user_id}")
                 return True
             except Exception as e:
                 print(f"⚠️ Local session.json is invalid or expired: {e}. Re-authenticating with password...")
