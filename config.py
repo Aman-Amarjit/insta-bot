@@ -21,24 +21,17 @@ CAPTION_TONE = "surprising, educational, engaging"
 HASHTAG_COUNT = 20
 
 # Post Times configuration
-POST_TIMES = ["09:00", "18:00"]
+POST_TIMES = ["09:00", "14:00", "19:00"]
 
 # Categories schedule mapping
-# Mon: Science / History
-# Tue: Technology / Psychology
-# Wed: Space / Biology
-# Thu: History / Science
-# Fri: Psychology / Technology
-# Sat: Geography / Space
-# Sun: Random / Random
 CATEGORY_ROTATION = {
-    0: ["science", "history"],     # Monday (0: Morning, 1: Evening)
-    1: ["technology", "psychology"], # Tuesday
-    2: ["space", "biology"],       # Wednesday
-    3: ["history", "science"],     # Thursday
-    4: ["psychology", "technology"], # Friday
-    5: ["geography", "space"],     # Saturday
-    6: ["science", "history"]       # Sunday (Fallback categories or randomized)
+    0: ["science", "history", "technology"],      # Monday (0: Morning, 1: Afternoon, 2: Evening)
+    1: ["technology", "psychology", "space"],     # Tuesday
+    2: ["space", "biology", "history"],           # Wednesday
+    3: ["history", "science", "psychology"],      # Thursday
+    4: ["psychology", "technology", "biology"],   # Friday
+    5: ["geography", "space", "science"],         # Saturday
+    6: ["science", "history", "geography"]        # Sunday
 }
 
 ALL_CATEGORIES = ["science", "history", "technology", "psychology", "space", "biology", "geography"]

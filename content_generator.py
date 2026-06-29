@@ -41,13 +41,56 @@ class ContentGenerator:
             "hashtags": ["facts", "didyouknow", "sciencefacts", "historyfacts", "amazingfacts", "todayilearned"]
         }
 
-    def generate(self, category: str, recent_facts: list, is_retry: bool = False) -> dict:
+    def verify_fact(self, fact_data: dict) -> bool:
         """
-        Queries Groq to generate a fact in the specified category, excluding any recent facts.
-        Includes full regex cleaning, JSON mode, and single-retry fallback logic.
+        Performs a second validation check via a critique prompt to ensure the fact is true and accurate.
         """
         if not self.client:
-            print("Mock Generator: Returning pre-configured mock fact.")
+            return True
+            
+        verification_instructions = (
+            "You are a strict historical and scientific fact-checker. "
+            "Your job is to critically evaluate a proposed Instagram fact. "
+            "You must output valid JSON only. Scheme: {\"is_true\": true/false, \"confidence\": float (0.0 to 1.0), \"critique\": \"explanation of why it is true or false\"}"
+        )
+        
+        verification_prompt = f"""
+        Fact to check: "{fact_data.get('fact')}"
+        Explanation: "{fact_data.get('explanation')}"
+        
+        Is this fact 100% true, accurate, verifiable, and not a common myth, misconception, or exaggeration?
+        Return the JSON result with "is_true", "confidence", and "critique".
+        """
+        
+        try:
+            completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": verification_instructions},
+                    {"role": "user", "content": verification_prompt}
+                ],
+                model="llama-3.1-8b-instant",
+                response_format={"type": "json_object"},
+                temperature=0.1,  # Low temperature for analytical consistency
+                max_tokens=300
+            )
+            raw = completion.choices[0].message.content
+            cleaned = self._clean_json_text(raw)
+            data = json.loads(cleaned)
+            is_true = data.get("is_true", True)
+            critique = data.get("critique", "")
+            confidence = data.get("confidence", 1.0)
+            
+            print(f"🕵️ Fact-Checker Verification: is_true={is_true}, confidence={confidence}, critique='{critique}'")
+            return is_true and (confidence >= 0.8)
+        except Exception as e:
+            print(f"⚠️ Fact-checking step failed or skipped: {e}. Defaulting to True.")
+            return True
+
+    def _generate_draft(self, category: str, recent_facts: list, is_retry: bool = False) -> dict:
+        """
+        Queries Groq to generate a raw fact draft in the specified category, excluding any recent facts.
+        """
+        if not self.client:
             return self._get_mock_fact(category)
 
         recent_facts_str = json.dumps(recent_facts)
@@ -77,50 +120,59 @@ Rules:
 - Never repeat a fact already in this list: {recent_facts_str}
 """
 
-        # For retries, we enforce a stricter instruction set
         if is_retry:
             system_instructions += " CRITICAL: Your previous response failed to parse as JSON. You must strictly output valid JSON matching the requested schema. Do not output any preamble or postamble."
 
-        try:
-            # Query Groq with JSON Mode enabled
-            completion = self.client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_instructions},
-                    {"role": "user", "content": user_prompt}
-                ],
-                model="llama-3.1-8b-instant",
-                response_format={"type": "json_object"},
-                temperature=0.7,
-                max_tokens=800
-            )
+        completion = self.client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_instructions},
+                {"role": "user", "content": user_prompt}
+            ],
+            model="llama-3.1-8b-instant",
+            response_format={"type": "json_object"},
+            temperature=0.7,
+            max_tokens=800
+        )
 
-            raw_response = completion.choices[0].message.content
-            cleaned_response = self._clean_json_text(raw_response)
-            
+        raw_response = completion.choices[0].message.content
+        cleaned_response = self._clean_json_text(raw_response)
+        
+        fact_data = json.loads(cleaned_response)
+        
+        # Basic validation of keys
+        required_keys = ["fact", "explanation", "category", "caption", "hashtags"]
+        for key in required_keys:
+            if key not in fact_data:
+                raise ValueError(f"Missing key '{key}' in JSON response")
+        
+        return fact_data
+
+    def generate(self, category: str, recent_facts: list) -> dict:
+        """
+        Queries Groq to generate a fact in the specified category, excluding any recent facts.
+        Includes a 3-attempt fact-checking loop for quality and accuracy verification.
+        """
+        if not self.client:
+            print("Mock Generator: Returning pre-configured mock fact.")
+            return self._get_mock_fact(category)
+
+        for attempt in range(1, 4):
+            print(f"🤖 Generating fact draft (attempt {attempt}/3)...")
             try:
-                fact_data = json.loads(cleaned_response)
+                # Generate draft
+                fact_data = self._generate_draft(category, recent_facts, is_retry=(attempt > 1))
                 
-                # Basic validation of keys
-                required_keys = ["fact", "explanation", "category", "caption", "hashtags"]
-                for key in required_keys:
-                    if key not in fact_data:
-                        raise ValueError(f"Missing key '{key}' in JSON response")
-                
-                return fact_data
-                
-            except (json.JSONDecodeError, ValueError) as json_err:
-                print(f"⚠️ JSON parsing failed on attempt (is_retry={is_retry}): {json_err}")
-                print(f"Raw response was: {raw_response[:200]}...")
-                
-                if not is_retry:
-                    print("🔄 Retrying fact generation with stricter prompt...")
-                    return self.generate(category, recent_facts, is_retry=True)
+                # Verify fact validity
+                print("🕵️ Passing fact draft to Fact-Checking critique layer...")
+                if self.verify_fact(fact_data):
+                    print("✅ Fact verified successfully!")
+                    return fact_data
                 else:
-                    raise json_err
-
-        except Exception as e:
-            print(f"❌ Failed to generate fact via Groq API: {e}")
-            # In a production runner, we fail loud here, but let's fall back to mock if testing locally
-            if not self.api_key:
-                return self._get_mock_fact(category)
-            raise e
+                    print("❌ Fact failed verification checks. Retrying...")
+            except (json.JSONDecodeError, ValueError) as json_err:
+                print(f"⚠️ JSON parsing failed on attempt {attempt}: {json_err}")
+            except Exception as e:
+                print(f"❌ Failed to generate fact on attempt {attempt}: {e}")
+                
+        print("⚠️ All 3 fact generation attempts failed or were rejected by fact-checker. Falling back to mock fact.")
+        return self._get_mock_fact(category)

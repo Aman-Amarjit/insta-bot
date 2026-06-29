@@ -24,12 +24,18 @@ class ContentCalendar:
         weekday = ist_time.weekday()  # 0: Monday, ..., 6: Sunday
         hour = ist_time.hour
 
-        # Morning slot: before 13:00 (1 PM) IST
-        # Evening slot: after 13:00 IST
-        slot = 0 if hour < 13 else 1
+        # Slot 0 (Morning): before 13:00 (1 PM) IST
+        # Slot 1 (Afternoon): between 13:00 and 17:00 (5 PM) IST
+        # Slot 2 (Evening): after 17:00 IST
+        if hour < 13:
+            slot = 0
+        elif hour < 17:
+            slot = 1
+        else:
+            slot = 2
 
         # Retrieve default categories list for the day
-        day_categories = config.CATEGORY_ROTATION.get(weekday, ["science", "history"])
+        day_categories = config.CATEGORY_ROTATION.get(weekday, ["science", "history", "technology"])
         
         # Safe array index check
         if slot >= len(day_categories):
