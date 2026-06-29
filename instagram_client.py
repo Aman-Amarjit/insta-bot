@@ -42,7 +42,6 @@ class InstagramClient:
                 
                 # VERIFY: Resolve account info and verify session is active
                 info = self.cl.account_info()
-                self.cl.user_id = str(info.pk)
                 print(f"✅ Instagram logged in and session verified from base64 config. User ID: {self.cl.user_id}")
                 return True
             except Exception as e:
@@ -56,7 +55,6 @@ class InstagramClient:
                 
                 # VERIFY: Resolve account info and verify session is active
                 info = self.cl.account_info()
-                self.cl.user_id = str(info.pk)
                 print(f"✅ Instagram logged in and session verified from local session.json. User ID: {self.cl.user_id}")
                 return True
             except Exception as e:
@@ -84,7 +82,7 @@ class InstagramClient:
 
     def post_photo(self, image_path: str, caption: str):
         """
-        Logs in and posts a photo to Instagram.
+        Logs in and posts a photo to Instagram (without music).
         Returns the posted media object.
         """
         # Ensure authenticated
@@ -104,6 +102,77 @@ class InstagramClient:
             except Exception as se:
                 print(f"⚠️ Warning: Failed to dump updated session: {se}")
                 
+            return media
+        except Exception as e:
+            print(f"❌ Instagram upload failed: {e}")
+            raise e
+
+    # Music search queries mapped to each category for relevance
+    CATEGORY_MUSIC_QUERIES = {
+        "science":    "science discovery ambient",
+        "history":    "epic cinematic orchestral",
+        "technology": "futuristic electronic ambient",
+        "psychology": "calm piano chill",
+        "space":      "space ambient cosmic",
+        "biology":    "nature chill ambient",
+        "geography":  "world travel chill",
+    }
+
+    def post_photo_with_music(self, image_path: str, caption: str, category: str = "science"):
+        """
+        Logs in and posts a photo to Instagram with a trending music track.
+        Searches for a track relevant to the post category.
+        Falls back gracefully to a regular photo upload if music is unavailable.
+        Returns the posted media object.
+        """
+        if not self.login():
+            raise Exception("Authentication failed. Cannot post to Instagram.")
+
+        print(f"📸 Attempting to upload photo with music for category '{category}'...")
+        
+        # Try to find a music track
+        track = None
+        query = self.CATEGORY_MUSIC_QUERIES.get(category, "chill ambient music")
+        try:
+            print(f"🎵 Searching Instagram music for: '{query}'...")
+            tracks = self.cl.search_music(query)
+            if tracks:
+                track = tracks[0]
+                print(f"✅ Found track: '{track.title}' by '{track.artist_name}'")
+            else:
+                print("⚠️ No music tracks found for this query. Falling back to regular upload.")
+        except Exception as me:
+            print(f"⚠️ Music search failed: {me}. Falling back to regular upload.")
+
+        # Attempt photo upload with music; fall back to regular upload if it fails
+        if track:
+            try:
+                print(f"🎶 Uploading photo with music track: '{track.title}'...")
+                media = self.cl.photo_upload_with_music(
+                    path=image_path,
+                    caption=caption,
+                    track=track,
+                )
+                print(f"🎉 Photo with music posted successfully! Media ID: {media.id}")
+                try:
+                    self.cl.dump_settings(self.session_file)
+                    print("💾 Saved updated session configuration to session.json")
+                except Exception as se:
+                    print(f"⚠️ Warning: Failed to dump updated session: {se}")
+                return media
+            except Exception as e:
+                print(f"⚠️ Photo upload with music failed: {e}. Falling back to regular upload...")
+
+        # Fallback: regular photo upload without music
+        print(f"📸 Uploading photo (without music) to Instagram...")
+        try:
+            media = self.cl.photo_upload(image_path, caption)
+            print(f"🎉 Photo posted successfully (no music)! Media ID: {media.id}")
+            try:
+                self.cl.dump_settings(self.session_file)
+                print("💾 Saved updated session configuration to session.json")
+            except Exception as se:
+                print(f"⚠️ Warning: Failed to dump updated session: {se}")
             return media
         except Exception as e:
             print(f"❌ Instagram upload failed: {e}")

@@ -29,11 +29,17 @@ def test_category_schedule():
     print(f"Mon 09:00 IST default category: {cat1}")
     assert cat1 == "science", f"Expected 'science', got '{cat1}'"
     
-    # Mon Evening (6:00 PM IST -> 18:00) -> should yield config.CATEGORY_ROTATION[0][1] = "history"
-    mon_evening = datetime(2026, 6, 29, 18, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
-    cat2 = cal.get_default_category(mon_evening)
-    print(f"Mon 18:00 IST default category: {cat2}")
+    # Mon Afternoon (2:00 PM IST -> 14:00) -> should yield config.CATEGORY_ROTATION[0][1] = "history"
+    mon_afternoon = datetime(2026, 6, 29, 14, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+    cat2 = cal.get_default_category(mon_afternoon)
+    print(f"Mon 14:00 IST default category: {cat2}")
     assert cat2 == "history", f"Expected 'history', got '{cat2}'"
+    
+    # Mon Evening (6:00 PM IST -> 18:00) -> should yield config.CATEGORY_ROTATION[0][2] = "technology"
+    mon_evening = datetime(2026, 6, 29, 18, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+    cat3 = cal.get_default_category(mon_evening)
+    print(f"Mon 18:00 IST default category: {cat3}")
+    assert cat3 == "technology", f"Expected 'technology', got '{cat3}'"
     
     print("✅ Schedule rotation checks passed!")
     return True

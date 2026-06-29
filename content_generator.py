@@ -117,6 +117,8 @@ Rules:
 - Fact must be verifiable and accurate.
 - Must be surprising and not commonly known.
 - One fact per post only.
+- IMPORTANT: Do NOT include any hashtags inside the "caption" field. Hashtags go ONLY in the "hashtags" array.
+- The "caption" field must contain ONLY human-readable text (hook, explanation, call to action). No # symbols.
 - Never repeat a fact already in this list: {recent_facts_str}
 """
 
