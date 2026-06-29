@@ -19,6 +19,7 @@ uploads/
 # Local secret setting utility
 set_github_secrets.py
 upload_session_secret.py
+instagram_login_clean.py
 
 # OS files
 .DS_Store
