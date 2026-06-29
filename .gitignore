@@ -20,6 +20,8 @@ uploads/
 set_github_secrets.py
 upload_session_secret.py
 instagram_login_clean.py
+convert_cookies.py
+browser_cookies.json
 
 # OS files
 .DS_Store
