@@ -1,0 +1,60 @@
+# .github/workflows/post.yml
+# Daily Facts Instagram Bot Github Actions Configuration
+# Triggers automatically twice daily (9:00 AM and 6:00 PM IST)
+
+name: Daily Facts Instagram Bot
+
+on:
+  schedule:
+    - cron: '30 3 * * *'    # 9:00 AM IST (3:30 AM UTC)
+    - cron: '30 12 * * *'   # 6:00 PM IST (12:30 PM UTC)
+  workflow_dispatch:        # Allows manual run from GitHub actions UI tab
+
+jobs:
+  post-fact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Step 1: Checkout repository files (needed for fonts and code)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup Python environment and cache packages
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # Step 3: Install Pip dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Run fact generator, image renderer, and poster
+      - name: Generate and post fact
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}
+          INSTAGRAM_PASSWORD: ${{ secrets.INSTAGRAM_PASSWORD }}
+          INSTAGRAM_SESSION: ${{ secrets.INSTAGRAM_SESSION }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          WATERMARK_TEXT: ${{ secrets.WATERMARK_TEXT }}
+        run: python post_now.py
+
+      # Step 5: If post succeeded, update session cookies in repository secrets
+      - name: Update Instagram session
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          python save_session.py
+
+      # Step 6: Trigger alert notification if any pipeline step failed
+      - name: Handle failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python notify_failure.py

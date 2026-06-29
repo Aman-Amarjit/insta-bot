@@ -1,0 +1,21 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local environments & credentials
+.env
+session.json
+
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Infographics local uploads folder
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
