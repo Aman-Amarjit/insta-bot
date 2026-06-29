@@ -16,6 +16,10 @@ env/
 # Infographics local uploads folder
 uploads/
 
+# Local secret setting utility
+set_github_secrets.py
+upload_session_secret.py
+
 # OS files
 .DS_Store
 Thumbs.db
